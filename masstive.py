@@ -72,8 +72,14 @@ def main():
         ip_network = IPNetwork(network)
         start_block = str(ip_network[0])
         end_block = str(ip_network[-1])
+        #  Masscan banner grabbing needs a firewall rule to prevent connections being reset
+        run_cmd('iptables -A INPUT -p tcp -i eth0 --dport 61234 -j DROP')
         results_file = BASE_PATH + 'scan-result-%s-%s-%s-%s.txt' % (country, city, start_block, end_block)
+<<<<<<< HEAD
         masscan_cmd = '%s --capture html --capture cert -p 80,443 %s --rate %s --banners -oG %s' % (MASSCAN_BINARY, network, SCAN_RATE, results_file)
+=======
+        masscan_cmd = '%s -p 80,443 %s --rate %s --banners --capture html --retries 2 --adapter-port 61234 -oG %s' % (MASSCAN_BINARY, network, SCAN_RATE, results_file)
+>>>>>>> 775bad4c4ba88d256ff321f95855de07f06a74d0
         write_log('Kicking off masstive scan for %s' % network)
         run_cmd(masscan_cmd)
         write_log('End masscan for %s' % network)
