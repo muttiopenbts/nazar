@@ -9,6 +9,10 @@ import datetime
 from ScanRecord import ScanRecord
 import time
 from elasticsearch import Elasticsearch
+import csv
+import sys
+import tempfile
+import urllib
 
 
 BASE_PATH = '/opt/masscan/scan_results'
@@ -22,6 +26,20 @@ def write_log(output):
     datetime = time.strftime("%x") + ' ' + time.strftime("%X")
     with open(LOG_FILE, 'a+') as f:
         f.write("%s: %s\n" % (datetime, output))
+
+
+def run_cmd(cmd):
+    '''
+    Call OS cmd
+    '''
+    result = ''
+    p = os.popen(cmd, "r")
+    while 1:
+        line = p.readline()
+        result += line
+        if not line:
+            break
+    return result
 
 
 def get_fields_from_masscan_output(scan_result_record):
@@ -96,9 +114,39 @@ def get_timestamp_from_file(filename):
                          time.gmtime(os.path.getmtime(filename)))
 
 
+def cleanMasscanCert(banner):
+    # Expect masscan banner field with x509 contents. e.g. blah:MII...
+    # Returns PEM cert
+    try:
+        # Sometimes the banner contains the string 'cert:' in front of the actual cert
+        pem_body = banner.split(':')[1]
+    except:
+        pem_body = banner
+
+    pem_header = '-----BEGIN CERTIFICATE-----\n'
+    pem_footer = '\n-----END CERTIFICATE-----'
+    pem_body = pem_header + pem_body + pem_footer
+    cert = re.sub("(.{64})", "\\1\n", pem_body, 0, re.DOTALL)
+    return cert
+
+
+def getPlaintextFromPem(certificate):
+    temp = tempfile.NamedTemporaryFile(mode='w+t')
+    plaintext_cert = ''
+    try:
+        temp.write(certificate)
+        temp.seek(0)
+        cmd = 'openssl x509 -text -in %s' % temp.name
+        plaintext_cert = run_cmd(cmd)
+    except:
+        print "Couldn't convert pem to plaintext"
+    finally:
+        # Automatically cleans up the file
+        temp.close()
+        return plaintext_cert
+
 def set_csv(scan_record, country, city, timestamp, csv_filename):
     # Create csv or append
-    import csv
     with open(csv_filename, 'a') as csvfile:
         csvwriter = csv.writer(
             csvfile, delimiter=',',
@@ -140,8 +188,12 @@ def main():
             for record in records:
                 set_csv(record, country, city, timestamp, CSV_PATH+timestamp+".txt")
                 # Save record into elastic search db
+                # Check if banner contains x509 cert and convert to plaintext
+                if record.service.lower() == 'x509'.lower():
+                    cert = cleanMasscanCert(record.banner)
+                    record.banner = getPlaintextFromPem(cert)
                 save_db_record(record, country, city, timestamp, es)
-                print "Saved record to Elasticsearch db"
+                write_log("Saved record to Elasticsearch db")
             # Move scan result file to processed directory
             os.rename(unprocessed_fille, PROCESSED_DIRECTORY+'/'+scan_result_file)
     else:
