@@ -75,7 +75,7 @@ def main():
         #  Masscan banner grabbing needs a firewall rule to prevent connections being reset
         run_cmd('iptables -A INPUT -p tcp -i eth0 --dport 61234 -j DROP')
         results_file = BASE_PATH + 'scan-result-%s-%s-%s-%s.txt' % (country, city, start_block, end_block)
-        masscan_cmd = '%s -p 80,443 %s --rate %s --banners --capture html --adapter-port 61234 -oG %s' % (MASSCAN_BINARY, network, SCAN_RATE, results_file)
+        masscan_cmd = '%s -p 80,443 %s --rate %s --banners --capture html --retries 2 --adapter-port 61234 -oG %s' % (MASSCAN_BINARY, network, SCAN_RATE, results_file)
         write_log('Kicking off masstive scan for %s' % network)
         run_cmd(masscan_cmd)
         write_log('End masscan for %s' % network)
