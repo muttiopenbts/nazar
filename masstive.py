@@ -73,7 +73,7 @@ def main():
         start_block = str(ip_network[0])
         end_block = str(ip_network[-1])
         results_file = BASE_PATH + 'scan-result-%s-%s-%s-%s.txt' % (country, city, start_block, end_block)
-        masscan_cmd = '%s -p 80,443 %s --rate %s --banners -oG %s' % (MASSCAN_BINARY, network, SCAN_RATE, results_file)
+        masscan_cmd = '%s --capture html --capture cert -p 80,443 %s --rate %s --banners -oG %s' % (MASSCAN_BINARY, network, SCAN_RATE, results_file)
         write_log('Kicking off masstive scan for %s' % network)
         run_cmd(masscan_cmd)
         write_log('End masscan for %s' % network)

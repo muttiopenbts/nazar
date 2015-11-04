@@ -72,7 +72,11 @@ def main():
     cidr_merge(merged_cidr_blocks)
     print len(merged_cidr_blocks)
     merged_cidr_blocks = [cidr.__str__() for cidr in merged_cidr_blocks]
-    write_city_netblock_to_file('\n'.join(merged_cidr_blocks), country+"-"+city+".txt")
+    new_filename = country+"-"+city+".txt"
+    write_city_netblock_to_file(
+        '\n'.join(merged_cidr_blocks),
+        new_filename.replace(" ", "_"),
+        )
 #        print cidr_blocks
 
 
