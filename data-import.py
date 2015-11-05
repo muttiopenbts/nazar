@@ -12,7 +12,6 @@ from elasticsearch import Elasticsearch
 import csv
 import sys
 import tempfile
-import urllib
 
 
 BASE_PATH = '/opt/masscan/scan_results'
@@ -188,8 +187,6 @@ def main():
             for record in records:
                 set_csv(record, country, city, timestamp, CSV_PATH+timestamp+".txt")
                 # Save record into elastic search db
-                # First url decode banners
-                record.banner = urllib.unquote(record.banner)
                 # Check if banner contains x509 cert and convert to plaintext
                 if record.service.lower() == 'x509'.lower():
                     cert = cleanMasscanCert(record.banner)
