@@ -123,7 +123,7 @@ def cleanMasscanCert(banner):
         pem_body = banner
 
     pem_header = '-----BEGIN CERTIFICATE-----\n'
-    pem_footer = '\n-----END CERTIFICATE-----'
+    pem_footer = '\n-----END CERTIFICATE-----\n'
     pem_body = pem_header + pem_body + pem_footer
     cert = re.sub("(.{64})", "\\1\n", pem_body, 0, re.DOTALL)
     return cert
