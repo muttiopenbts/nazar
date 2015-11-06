@@ -139,6 +139,7 @@ def getPlaintextFromPem(certificate):
         plaintext_cert = run_cmd(cmd)
     except:
         print "Couldn't convert pem to plaintext"
+        plaintext_cert = certificate
     finally:
         # Automatically cleans up the file
         temp.close()
