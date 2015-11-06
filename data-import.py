@@ -133,10 +133,13 @@ def getPlaintextFromPem(certificate):
     temp = tempfile.NamedTemporaryFile(mode='w+t')
     plaintext_cert = ''
     try:
-        temp.write(certificate)
-        temp.seek(0)
-        cmd = 'openssl x509 -text -in %s' % temp.name
-        plaintext_cert = run_cmd(cmd)
+        if isx509(certificate):
+            temp.write(certificate)
+            temp.seek(0)
+            cmd = 'openssl x509 -text -in %s' % temp.name
+            plaintext_cert = run_cmd(cmd)
+        else:
+            plaintext_cert = certificate
     except:
         print "Couldn't convert pem to plaintext"
         plaintext_cert = certificate
@@ -166,6 +169,13 @@ def set_csv(scan_record, country, city, timestamp, csv_filename):
             timestamp,
             ]
         csvwriter.writerow(line)
+
+
+def isx509(blob):
+    # Good chance that if string contains MII it is x509 cert
+    matchObj = re.match(r'^MII.*', blob)
+    if matchObj:
+        return True
 
 
 def main():
