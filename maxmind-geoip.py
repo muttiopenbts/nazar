@@ -2,15 +2,25 @@
 '''
 TODO: make code more efficient by slurping location id from location file and parsing netblock
 file once.
+Argument 1 mode, elastic|csv
+Argument 2 path of maxmind csv files
 '''
 from tempfile import NamedTemporaryFile
+from GeoCityLocationRecord import GeoCityLocationRecord
+from GeoCityNetblockRecord import GeoCityNetblockRecord
 import shutil
 import csv
 import re
 import time
 import os
+import sys
+from elasticsearch import Elasticsearch
+import json
+import requests
+
 
 BASE_URL = '/opt/maxmind_geoip/'
+BASE_URL = sys.argv[2]
 NEW_GEOIP_PATH = BASE_URL+'processed/'
 GEO_LOCATION_FILE = BASE_URL + 'GeoLite2-City-Locations-en.csv'
 GEO_NETBLOCK_FILE = BASE_URL+'GeoLite2-City-Blocks-IPv4.csv'
@@ -157,23 +167,152 @@ def processUsingCsvMem():
     shutil.move(TEMP_GEO_NETBLOCK_FILE.name, NEW_GEOIP_FILENAME)
 
 
-def main():
+def csvMode():
     if not os.path.exists(NEW_GEOIP_PATH):
         os.makedirs(NEW_GEOIP_PATH)
     processUsingGrep()
 
 
-def __main():
-    # run through location file
-    for location_line in get_line_from_csv(GEO_LOCATION_FILE):
-        # collect all netblocks with matching location id
-        rows_of_netblocks = \
-            get_all_matching_locationid_from_netblock_file(location_line)
-        # remove duplicate field from row
-        location_line.pop(0)
-        set_csv_row(TEMP_FILENAME, location_line, rows_of_netblocks)
-    # Move new temp csv to final location
-    shutil.move(TEMP_FILENAME.name, NEW_GEOIP_FILENAME)
+def save_netblock_record(
+    network,
+    geoname_id,
+    registered_country_geoname_id,
+    represented_country_geoname_id,
+    is_anonymous_proxy,
+    is_satellite_provider,
+    postal_code,
+    latitude,
+    longitude,
+    es,
+        ):
+    es.index(
+        index='geo_city_netblock',
+        doc_type='maxmind',
+        id=None,
+        body={
+            'network': network,
+            'geoname_id': geoname_id,
+            'registered_country_geoname_id': registered_country_geoname_id,
+            'represented_country_geoname_id': represented_country_geoname_id,
+            'is_anonymous_proxy': is_anonymous_proxy,
+            'is_satellite_provider': is_satellite_provider,
+            'postal_code': postal_code,
+            'location': latitude + ',' + longitude,
+        }
+    )
+
+
+def save_location_record(
+        geoname_id,
+        locale_code,
+        continent_code,
+        continent_name,
+        country_iso_code,
+        country_name,
+        subdivision_1_iso_code,
+        subdivision_1_name,
+        subdivision_2_iso_code,
+        subdivision_2_name,
+        city_name,
+        metro_code,
+        time_zone,
+        es):
+    es.index(
+        index='geo_city_location',
+        doc_type='maxmind',
+        id=None,
+        body={
+            'geoname_id': geoname_id,
+            'locale_code': locale_code,
+            'continent_code': continent_code,
+            'continent_name': continent_name,
+            'country_iso_code': country_iso_code,
+            'country_name': country_name,
+            'subdivision_1_iso_code': subdivision_1_iso_code,
+            'subdivision_1_name': subdivision_1_name,
+            'subdivision_2_iso_code': subdivision_2_iso_code,
+            'subdivision_2_name': subdivision_2_name,
+            'city_name': city_name,
+            'metro_code': metro_code,
+            'time_zone': time_zone,
+        }
+    )
+
+
+def prepareEsIndexes():
+    # netblock index
+    payload = {
+       "geo_city_netblock": {
+                "properties": {
+                   "geoname_id": {
+                      "type": "string"
+                   },
+                   "is_anonymous_proxy": {
+                      "type": "string"
+                   },
+                   "is_satellite_provider": {
+                      "type": "string"
+                   },
+                   "location": {
+                            "type": "geo_point",
+                            "geohash": "false",
+                   },
+                   "network": {
+                      "type": "string"
+                   },
+                   "postal_code": {
+                      "type": "string"
+                   },
+                   "registered_country_geoname_id": {
+                      "type": "string"
+                   },
+                   "represented_country_geoname_id": {
+                      "type": "string"
+                   }
+                }
+           }
+    }
+
+    payload_json = json.dumps(payload)
+    #  Delete index if exists
+    requests.delete("http://localhost:9200/geo_city_netblock/")
+    #  Create index
+    requests.put("http://localhost:9200/geo_city_netblock/")
+    #  Set index mapping
+    requests.put("http://localhost:9200/geo_city_netblock/geo_city_netblock/_mapping", data=payload_json)
+
+    # location index
+    #  Delete index if exists
+    requests.delete("http://localhost:9200/geo_city_location/")
+
+
+def elasticsearchMode():
+    prepareEsIndexes()
+    es = Elasticsearch([{'host': 'localhost', 'port': 9200}])
+
+    write_log("Starting maxmind geo IP location processing with elasticsearch db")
+    location_csv_file = get_line_from_csv(GEO_LOCATION_FILE)
+    location_csv_file.next()  # skip csv header
+    for location_line in location_csv_file:
+        location_line.append(es)
+        save_location_record(*location_line)
+    write_log("End maxmind geo IP location processing")
+
+    write_log("Starting maxmind geo IP netblock processing with elasticsearch db")
+    netblock_csv_file = get_line_from_csv(GEO_NETBLOCK_FILE)
+    netblock_csv_file.next()  # skip csv header
+    for netblock_line in netblock_csv_file:
+        netblock_line.append(es)
+        save_netblock_record(*netblock_line)
+    write_log("End maxmind geo IP netblock processing")
+
+
+def main(argv):
+    if argv[1] == 'elastic':
+        elasticsearchMode()
+    else:
+        csvMode()
+
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv)
