@@ -109,7 +109,7 @@ def get_city_from_file(filename):
 
 
 def get_timestamp_from_file(filename):
-    return time.strftime('%Y-%m-%d-%H',
+    return time.strftime('%Y-%m-%d',
                          time.gmtime(os.path.getmtime(filename)))
 
 
