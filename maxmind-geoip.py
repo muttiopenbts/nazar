@@ -185,6 +185,11 @@ def save_netblock_record(
     longitude,
     es,
         ):
+    if not latitude:
+        latitude = '0.0'
+    if not longitude:
+        longitude = '0.0'
+    location = latitude + ',' + longitude
     es.index(
         index='geo_city_netblock',
         doc_type='maxmind',
@@ -197,7 +202,7 @@ def save_netblock_record(
             'is_anonymous_proxy': is_anonymous_proxy,
             'is_satellite_provider': is_satellite_provider,
             'postal_code': postal_code,
-            'location': latitude + ',' + longitude,
+            'location': location,
         }
     )
 
