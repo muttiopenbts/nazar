@@ -242,7 +242,7 @@ def save_location_record(
 def prepareEsIndexes():
     # netblock index
     payload = {
-       "geo_city_netblock": {
+       "maxmind": {
                 "properties": {
                    "geoname_id": {
                       "type": "string"
@@ -279,9 +279,9 @@ def prepareEsIndexes():
     #  Create index
     requests.put("http://localhost:9200/geo_city_netblock/")
     #  Set index mapping
-    requests.put("http://localhost:9200/geo_city_netblock/geo_city_netblock/_mapping", data=payload_json)
+    requests.put("http://localhost:9200/geo_city_netblock/_mapping/maxmind", data=payload_json)
 
-    # location index
+    # location index]
     #  Delete index if exists
     requests.delete("http://localhost:9200/geo_city_location/")
 
