@@ -87,6 +87,7 @@ def bi_contains(lst, item):
 
 
 def grep(search_string, filename):
+    # TODO: Input sanitization needed
     '''
     Call OS grep
     Return matching lines
@@ -138,35 +139,6 @@ def processUsingGrep():
     write_log("End maxmind geo IP netblock processing")
 
 
-def processUsingCsvMem():
-    # run through location file and save location ids in mem
-    location_file_rows = []
-    for location_line in get_line_from_csv(GEO_LOCATION_FILE):
-        location_file_rows.append(location_line)
-    # get csv generator and skip header
-    geo_netblock_csv = get_line_from_csv(GEO_NETBLOCK_FILE)
-    geo_netblock_csv.next()
-    # Iterate through netblock lines in csv
-    for netblock_line in geo_netblock_csv:
-        # Find matching location id in memory
-        for location_row in location_file_rows:
-            location_id_from_location = \
-                get_locationid_from_location_file(location_row)
-            location_id_from_netblock = \
-                get_locationid_from_netblock_file(netblock_line)
-            # we have a match? Save to temp csv
-            if location_id_from_location == location_id_from_netblock:
-                # remove duplicate field from row
-                location_row.pop(0)
-                set_csv_row(TEMP_GEO_NETBLOCK_FILE,
-                            location_row, [netblock_line])
-                # print location_id_from_location
-                # print location_id_from_netblock
-                # found a match, stop break loop
-                break
-    shutil.move(TEMP_GEO_NETBLOCK_FILE.name, NEW_GEOIP_FILENAME)
-
-
 def csvMode():
     if not os.path.exists(NEW_GEOIP_PATH):
         os.makedirs(NEW_GEOIP_PATH)
@@ -174,16 +146,19 @@ def csvMode():
 
 
 def save_netblock_record(
-    network,
-    geoname_id,
-    registered_country_geoname_id,
-    represented_country_geoname_id,
-    is_anonymous_proxy,
-    is_satellite_provider,
-    postal_code,
-    latitude,
-    longitude,
-    es,
+        network,
+        geoname_id,
+        registered_country_geoname_id,
+        represented_country_geoname_id,
+        is_anonymous_proxy,
+        is_satellite_provider,
+        postal_code,
+        latitude,
+        longitude,
+        continent_name,
+        country_name,
+        city_name,
+        es,
         ):
     if not latitude:
         latitude = '0.0'
@@ -203,43 +178,9 @@ def save_netblock_record(
             'is_satellite_provider': is_satellite_provider,
             'postal_code': postal_code,
             'location': location,
-        }
-    )
-
-
-def save_location_record(
-        geoname_id,
-        locale_code,
-        continent_code,
-        continent_name,
-        country_iso_code,
-        country_name,
-        subdivision_1_iso_code,
-        subdivision_1_name,
-        subdivision_2_iso_code,
-        subdivision_2_name,
-        city_name,
-        metro_code,
-        time_zone,
-        es):
-    es.index(
-        index='geo_city_location',
-        doc_type='maxmind',
-        id=None,
-        body={
-            'geoname_id': geoname_id,
-            'locale_code': locale_code,
-            'continent_code': continent_code,
             'continent_name': continent_name,
-            'country_iso_code': country_iso_code,
             'country_name': country_name,
-            'subdivision_1_iso_code': subdivision_1_iso_code,
-            'subdivision_1_name': subdivision_1_name,
-            'subdivision_2_iso_code': subdivision_2_iso_code,
-            'subdivision_2_name': subdivision_2_name,
             'city_name': city_name,
-            'metro_code': metro_code,
-            'time_zone': time_zone,
         }
     )
 
@@ -295,20 +236,38 @@ def elasticsearchMode():
     prepareEsIndexes()
     es = Elasticsearch([{'host': 'localhost', 'port': 9200}])
 
-    write_log("Starting maxmind geo IP location processing with elasticsearch db")
-    location_csv_file = get_line_from_csv(GEO_LOCATION_FILE)
-    location_csv_file.next()  # skip csv header
-    for location_line in location_csv_file:
-        location_line.append(es)
-        save_location_record(*location_line)
-    write_log("End maxmind geo IP location processing")
-
     write_log("Starting maxmind geo IP netblock processing with elasticsearch db")
     netblock_csv_file = get_line_from_csv(GEO_NETBLOCK_FILE)
     netblock_csv_file.next()  # skip csv header
     for netblock_line in netblock_csv_file:
-        netblock_line.append(es)
-        save_netblock_record(*netblock_line)
+        if netblock_line[1]:
+            # Second field is location_id
+            location_id = netblock_line[1]
+        elif netblock_line[2]:
+            # Some netblocks don't have an id in the 2nd
+            location_id = netblock_line[2]
+        else:
+            # Just in case there is no location id. Some place called Sandwich Islands
+            location_id = '3426466'
+        location_id_regex = '^' + location_id + ','
+        location_csv_values = grep(location_id_regex, GEO_LOCATION_FILE)
+        # Remove newline char at end
+        location_csv_line = location_csv_values.split('\n')
+        # Result was array so remove first element
+        location_csv_line = location_csv_line[0]
+        # Break up csv fields into array ready for append to netblock array
+        location_csv_line = location_csv_line.split(',')
+        try:
+            continent_name = location_csv_line[3]
+            country_name = location_csv_line[5]
+            city_name = location_csv_line[10]
+            netblock_line += [continent_name, country_name, city_name, es]
+            save_netblock_record(*netblock_line)
+        except:
+            print "Import failed with following line."
+            print location_csv_line
+            print netblock_line
+            break
     write_log("End maxmind geo IP netblock processing")
 
 
