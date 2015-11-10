@@ -19,6 +19,7 @@ Run maxmind-geoip.py to join netblocks with city names using location IDs netblo
 This script will try to match the specified city with all location ids in the /opt/maxmind_geoip/GeoLite2-City-Locations-en.csv file and join with netblock csv. Result gets stored into processed directory as merged csv entry.
 First argument tells mode csv or elastic, second argument for location of geo csv files from stage 1.
 e.g. sudo ./maxmind-geoip.py csv '/opt/maxmind_geoip'
+or sudo ./maxmind-geoip.py elastic '/opt/maxmind_geoip'
 
 Step 3
 Search processed maxmind csv files for netblocks relating to your city of interest.

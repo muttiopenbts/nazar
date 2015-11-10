@@ -274,7 +274,7 @@ def elasticsearchMode():
 def main(argv):
     if argv[1] == 'elastic':
         elasticsearchMode()
-    else:
+    elif argv[1] == 'csv':
         csvMode()
 
 
