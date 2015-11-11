@@ -19,6 +19,7 @@ from netaddr import *
 LOG_FILE = '/tmp/masscan-log.txt'
 # This is where scan results are expected to be saved before being saved to db
 BASE_PATH = '/opt/masscan/scan_results/'
+BASE_PATH = sys.argv[3]
 MASSCAN_BINARY = '../masscan/bin/masscan'
 MASSCAN_BINARY = sys.argv[2]
 SCAN_RATE = 10000
@@ -69,6 +70,9 @@ def binary_exist(fpath):
 def main():
     if not binary_exist(MASSCAN_BINARY):
         print "Please specify path and binary for masscan. Check readme for help."
+        return
+    if not os.path.isdir(BASE_PATH):
+        print "Directory for storing scan results not specified or not exist."
         return
     target_cidr_blocks_file = sys.argv[1]
     country = get_country_from_file(target_cidr_blocks_file)
