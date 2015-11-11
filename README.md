@@ -6,6 +6,14 @@ GEO IP
 masscan binary
 ELK installation
 
+Step 0
+git clone https://github.com/muttiopenbts/nazar.git
+cd nazar
+Make masscan.
+git clone https://github.com/robertdavidgraham/masscan.git
+apt-get install libpcap-dev
+make
+
 Step 1
 Download GEO IP data from Maxmind http://geolite.maxmind.com/download/geoip/database/GeoLite2-City-CSV.zip as city locations.
 CSV format http://geolite.maxmind.com/download/geoip/database/GeoLiteCity_CSV/GeoLiteCity-latest.zip
@@ -28,10 +36,10 @@ result will be saved to /opt/masscan/targets/US-San Diego.txt
 
 Step 4
 Start scanning using masstive.py and file containing netblocks from step 3.
-e.g. ./masstive.py /opt/masscan/targets/Netherlands-Schiphol.txt
+e.g. ./masstive.py /opt/masscan/targets/Netherlands-Schiphol.txt ./masscan/bin/massscan
 Scan results are saved into files as scan-result-<country>-<city>-<start_block>-<end_block>.txt
 under /opt/masscan/scan_results/processed/
-User must specify file containing netblock from step 3 to scan.
+User must specify file containing netblock from step 3 to scan and masscan binary from step 0.
 Has ability to continue scanning from middle of netblock file by specifying which network line to continue from.
 
 Step 5

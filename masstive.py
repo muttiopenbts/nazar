@@ -20,6 +20,7 @@ LOG_FILE = '/tmp/masscan-log.txt'
 # This is where scan results are expected to be saved before being saved to db
 BASE_PATH = '/opt/masscan/scan_results/'
 MASSCAN_BINARY = '../masscan/bin/masscan'
+MASSCAN_BINARY = sys.argv[2]
 SCAN_RATE = 10000
 
 
