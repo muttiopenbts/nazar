@@ -62,7 +62,14 @@ def get_city_from_file(filename):
         return city.replace(" ", "_")
 
 
+def binary_exist(fpath):
+    return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+
 def main():
+    if not binary_exist(MASSCAN_BINARY):
+        print "Please specify path and binary for masscan. Check readme for help."
+        return
     target_cidr_blocks_file = sys.argv[1]
     country = get_country_from_file(target_cidr_blocks_file)
     city = get_city_from_file(target_cidr_blocks_file)
