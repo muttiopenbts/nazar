@@ -1,6 +1,8 @@
 '''
 This script will format masscan results from file ready for import
 into elastic search db
+Argument 1: e|k. e represents erase scan result file after import
+k means keep file
 '''
 import os
 from os import path
@@ -19,6 +21,7 @@ UNPROCESSED_DIRECTORY = BASE_PATH
 PROCESSED_DIRECTORY = BASE_PATH + '/processed'
 CSV_PATH = '/opt/nazar_feeds/masscan/'
 LOG_FILE = '/tmp/nazar-log.txt'
+MODE = sys.argv[1]  # First argument if e means erase to elastic and delete scan result file
 
 
 def write_log(output):
@@ -188,7 +191,7 @@ def main():
 
         # Read each scan result file
         for scan_result_file in list_of_scan_results:
-            write_log('Processing scan result file %s' % scan_result_file)
+#            write_log('Processing scan result file %s' % scan_result_file)
             unprocessed_fille = UNPROCESSED_DIRECTORY+'/'+scan_result_file
             records = read_masscan_file(unprocessed_fille)
             country = get_country_from_file(scan_result_file)
@@ -203,9 +206,12 @@ def main():
                     cert = cleanMasscanCert(record.banner)
                     record.banner = getPlaintextFromPem(cert)
                 save_db_record(record, country, city, timestamp, es)
-                write_log("Saved record to Elasticsearch db")
-            # Move scan result file to processed directory
-            os.rename(unprocessed_fille, PROCESSED_DIRECTORY+'/'+scan_result_file)
+#                write_log("Saved record to Elasticsearch db")
+            # Move or delete scan result file to processed directory
+            if (MODE == 'e'):  # remove scan result file
+                os.remove(unprocessed_fille)
+            elif (MODE == 'k'):  # keep scan resule file
+                os.rename(unprocessed_fille, PROCESSED_DIRECTORY+'/'+scan_result_file)
     else:
         print PROCESSED_DIRECTORY + " doesn't exist"
     write_log('Ending data import')
