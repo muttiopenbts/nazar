@@ -1,8 +1,10 @@
 '''
 This script will format masscan results from file ready for import
 into elastic search db
-Argument 1: e|k. e represents erase scan result file after import
+Argument 1:
+e|k|c. e represents erase scan result file after import
 k means keep file
+c means csv which can be used in a logstash fashion with elk
 '''
 import os
 from os import path
@@ -81,20 +83,20 @@ def read_masscan_file(filename):
 def save_db_record(scan_record, country, city, timestamp, es):
     es.index(
         index='scan',
-        doc_type='masscan',
-        id=None,
-        body={
-            'ip_address': scan_record.ipAddress,
-            'port': scan_record.port,
-            'state': scan_record.state,
-            'proto': scan_record.proto,
-            'service': scan_record.service,
-            'banner': scan_record.banner,
-            'country': country,
-            'city': city,
-            'timestamp': timestamp,
-        }
-    )
+                doc_type='masscan',
+                id=None,
+                body={
+                    'ip_address': scan_record.ipAddress,
+                    'port': scan_record.port,
+                    'state': scan_record.state,
+                    'proto': scan_record.proto,
+                    'service': scan_record.service,
+                    'banner': scan_record.banner,
+                    'country': country,
+                    'city': city,
+                    'timestamp': timestamp,
+                }
+            )
 
 
 def get_country_from_file(filename):
@@ -199,7 +201,8 @@ def main():
             timestamp = get_timestamp_from_file(UNPROCESSED_DIRECTORY+'/'+scan_result_file)
 
             for record in records:
-                set_csv(record, country, city, timestamp, CSV_PATH+timestamp+".txt")
+                if (MODE == 'c'):  # csv scan result file
+                    set_csv(record, country, city, timestamp, CSV_PATH+timestamp+".txt")
                 # Save record into elastic search db
                 # Check if banner contains x509 cert and convert to plaintext
                 if record.service.lower() == 'x509'.lower():
@@ -210,8 +213,10 @@ def main():
             # Move or delete scan result file to processed directory
             if (MODE == 'e'):  # remove scan result file
                 os.remove(unprocessed_fille)
-            elif (MODE == 'k'):  # keep scan resule file
+            elif (MODE == 'k'):  # keep scan result file
                 os.rename(unprocessed_fille, PROCESSED_DIRECTORY+'/'+scan_result_file)
+            elif (MODE == 'c'):  # csv scan result file
+                os.remove(unprocessed_fille)
     else:
         print PROCESSED_DIRECTORY + " doesn't exist"
     write_log('Ending data import')
